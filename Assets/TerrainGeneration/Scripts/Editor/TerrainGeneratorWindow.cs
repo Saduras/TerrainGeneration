@@ -6,6 +6,7 @@ public class TerrainGeneratorWindow : EditorWindow
 {
 	Terrain m_terrain = null;
 	int m_detail = 8;
+	float m_roughness = 0.7f;
 
 	float m_smoothCenter = 0.5f;
 	float m_smoothGrade = 0.5f;
@@ -26,11 +27,15 @@ public class TerrainGeneratorWindow : EditorWindow
 			m_detail = EditorGUILayout.IntField("Detail", m_detail);
 			float mapSize = Mathf.Pow(2, m_detail) + 1;
 			EditorGUILayout.LabelField("HeightMap size: " + mapSize + "x" + mapSize);
+			m_roughness = EditorGUILayout.FloatField("Roughness", m_roughness);
 
+			// Default roughness function 2^(-H) for H := m_roughness
+			// does not depend on average, max or size i.e. the callback is constant
+			float roughnessResult = Mathf.Pow(2, -m_roughness);
 			if (GUILayout.Button("Generate")) {
 				DSANoise noise = new DSANoise(m_detail);
 				noise.SetRoughnessFunction((average, max, size) => {
-					return Mathf.Pow(2, -0.5f);
+					return roughnessResult;
 				});
 				noise.Generate();
 				m_terrain.terrainData.SetHeights(0, 0, noise.GetNoiseMap());
