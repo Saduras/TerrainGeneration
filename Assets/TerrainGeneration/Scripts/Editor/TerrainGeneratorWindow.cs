@@ -26,6 +26,8 @@ public class TerrainGeneratorWindow : EditorWindow
 		if (m_terrain != null) {
 			m_roundnessCurve = EditorGUILayout.CurveField("Roundness", m_roundnessCurve);
 			m_detail = EditorGUILayout.IntField("Detail", m_detail);
+			float mapSize = Mathf.Pow(2, m_detail) + 1;
+			EditorGUILayout.LabelField("HeightMap size: " + mapSize + "x" + mapSize);
 
 			if (GUILayout.Button("Generate")) {
 				DSANoise noise = new DSANoise(m_detail);
