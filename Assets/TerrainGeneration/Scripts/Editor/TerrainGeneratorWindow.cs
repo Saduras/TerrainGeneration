@@ -5,7 +5,6 @@ using System.Collections;
 public class TerrainGeneratorWindow : EditorWindow
 {
 	Terrain m_terrain = null;
-	AnimationCurve m_roundnessCurve = new AnimationCurve();
 	int m_detail = 8;
 
 	float m_smoothCenter = 0.5f;
@@ -24,7 +23,6 @@ public class TerrainGeneratorWindow : EditorWindow
 		m_terrain = (Terrain)EditorGUILayout.ObjectField("Terrain",m_terrain, typeof(Terrain));
 
 		if (m_terrain != null) {
-			m_roundnessCurve = EditorGUILayout.CurveField("Roundness", m_roundnessCurve);
 			m_detail = EditorGUILayout.IntField("Detail", m_detail);
 			float mapSize = Mathf.Pow(2, m_detail) + 1;
 			EditorGUILayout.LabelField("HeightMap size: " + mapSize + "x" + mapSize);
