@@ -8,6 +8,10 @@ public class TerrainGeneratorWindow : EditorWindow
 	int m_detail = 8;
 	float m_roughness = 0.7f;
 
+	Texture2D m_texLow;
+	Texture2D m_texMid;
+	Texture2D m_texHigh;
+
 	float m_smoothCenter = 0.5f;
 	float m_smoothGrade = 0.5f;
 	float m_smoothThreshold = 0.1f;
@@ -21,9 +25,14 @@ public class TerrainGeneratorWindow : EditorWindow
 
 	void OnGUI()
 	{
-		m_terrain = (Terrain)EditorGUILayout.ObjectField("Terrain",m_terrain, typeof(Terrain));
+		m_terrain = (Terrain)EditorGUILayout.ObjectField("Terrain", m_terrain, typeof(Terrain));
 
 		if (m_terrain != null) {
+			//
+			// Generation
+			//
+
+
 			m_detail = EditorGUILayout.IntField("Detail", m_detail);
 			float mapSize = Mathf.Pow(2, m_detail) + 1;
 			EditorGUILayout.LabelField("HeightMap size: " + mapSize + "x" + mapSize);
@@ -41,32 +50,58 @@ public class TerrainGeneratorWindow : EditorWindow
 				m_terrain.terrainData.SetHeights(0, 0, noise.GetNoiseMap());
 			}
 
-			m_smoothCenter = EditorGUILayout.FloatField("Smooth center", m_smoothCenter);
-			m_smoothGrade = EditorGUILayout.FloatField("Smooth grade", m_smoothGrade);
-			m_smoothThreshold = EditorGUILayout.FloatField("Smooth threshold", m_smoothThreshold);
-			m_smoothIterations = EditorGUILayout.IntField("Smooth iterations", m_smoothIterations);
+			//
+			// Texturing
+			//
 
-			if (GUILayout.Button("Smooth")) {
-				float[,] heightMap = m_terrain.terrainData.GetHeights(0, 0, m_terrain.terrainData.heightmapWidth, m_terrain.terrainData.heightmapHeight);
-				for (int i = 0; i < m_smoothIterations; i++) {
-					heightMap = SmoothHeightMap(heightMap);
-				}
-				m_terrain.terrainData.SetHeights(0,0,heightMap);
+			m_texLow = (Texture2D)EditorGUILayout.ObjectField("TexLow", m_texLow, typeof(Texture2D));
+			m_texMid = (Texture2D)EditorGUILayout.ObjectField("TexMid", m_texMid, typeof(Texture2D));
+			m_texHigh = (Texture2D)EditorGUILayout.ObjectField("TexHigh", m_texHigh, typeof(Texture2D));
+			if (GUILayout.Button("Texture")) {
+				TextureTerrain();
 			}
 		}
 	}
 
-	float[,] SmoothHeightMap(float[,] heightMap) {
+	void TextureTerrain()
+	{
+		var textures = new SplatPrototype[3];
+		// low texture
+		textures[0] = new SplatPrototype();
+		textures[0].texture = m_texLow;
+		// mid texture
+		textures[1] = new SplatPrototype();
+		textures[1].texture = m_texMid;
+		// high texture
+		textures[2] = new SplatPrototype();
+		textures[2].texture = m_texHigh;
 
-		for (int i = 0; i < heightMap.GetLength(0); i++) {
-			for (int j = 0; j < heightMap.GetLength(1); j++) {
-				float diffToCenter = m_smoothCenter - heightMap[i, j];
-				if ( Mathf.Abs(diffToCenter) < m_smoothThreshold) {
-					heightMap[i, j] = heightMap[i, j] + Mathf.Sign(diffToCenter) * (m_smoothThreshold - Mathf.Abs(diffToCenter)) * m_smoothGrade;
-				}
+		var td = m_terrain.terrainData;
+		td.alphamapResolution = td.heightmapResolution;
+		var map = new float[td.alphamapWidth,td.alphamapHeight,3];
+
+		float max = float.MinValue;
+		float min = float.MaxValue;
+		for (int x = 0; x < td.alphamapWidth; x++) {
+			for (int y = 0; y < td.alphamapHeight; y++) {
+				float xR = x / (float)td.alphamapWidth;
+				float yR = y / (float)td.alphamapHeight;
+
+				var angle = td.GetSteepness(xR, yR);
+				var frac = angle / 90.0f;
+
+				max = Mathf.Max(frac, max);
+				min = Mathf.Min(frac, min);
+
+				map[x, y, 0] = (frac < 0.3f) ? 1.0f : 0.0f;
+				map[x, y, 1] = (frac >= 0.3f && frac < 0.7f) ? 1.0f : 0.0f;
+				map[x, y, 2] = (frac >= 0.7f) ? 1.0f : 0.0f;
+
 			}
 		}
+		Debug.Log("Max angle fraction: " + max + " min angle fraction: " + min);
 
-		return heightMap;
+		td.splatPrototypes = textures;
+		td.SetAlphamaps(0, 0, map);
 	}
 }
