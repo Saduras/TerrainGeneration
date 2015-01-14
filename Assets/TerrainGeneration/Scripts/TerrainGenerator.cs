@@ -32,6 +32,8 @@ public class TerrainGenerator : MonoBehaviour {
 			return roughnessResult;
 		});
 		noise.Generate();
+		Terrain.terrainData.heightmapResolution = (int) Mathf.Pow(2, Detail) + 1;
+		Terrain.terrainData.size = new Vector3(2000, 600, 2000);
 		Terrain.terrainData.SetHeights(0, 0, noise.GetNoiseMap());
 	}
 }
