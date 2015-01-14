@@ -15,7 +15,7 @@ public class TerrainGeneratorWindow : EditorWindow
 
 	void OnGUI()
 	{
-		m_generator = (TerrainGenerator)EditorGUILayout.ObjectField("Generator", m_generator, typeof(TerrainGenerator));
+		m_generator = (TerrainGenerator)EditorGUILayout.ObjectField("Generator", m_generator, typeof(TerrainGenerator), true);
 
 		if (m_generator != null) {
 			m_generator.Detail = EditorGUILayout.IntField("Detail", m_generator.Detail);
@@ -31,13 +31,13 @@ public class TerrainGeneratorWindow : EditorWindow
 		//
 		// Texturing
 		//
-		m_texturer = (TerrainTexturer)EditorGUILayout.ObjectField("Texturer", m_texturer, typeof(TerrainTexturer));
+		m_texturer = (TerrainTexturer)EditorGUILayout.ObjectField("Texturer", m_texturer, typeof(TerrainTexturer), true);
 
 		if(m_texturer != null)
 		{
-			m_texturer.TexLow = (Texture2D)EditorGUILayout.ObjectField("TexLow", m_texturer.TexLow, typeof(Texture2D));
-			m_texturer.TexMid = (Texture2D)EditorGUILayout.ObjectField("TexMid", m_texturer.TexMid, typeof(Texture2D));
-			m_texturer.TexHigh = (Texture2D)EditorGUILayout.ObjectField("TexHigh", m_texturer.TexHigh, typeof(Texture2D));
+			m_texturer.TexLow = (Texture2D)EditorGUILayout.ObjectField("TexLow", m_texturer.TexLow, typeof(Texture2D), false);
+			m_texturer.TexMid = (Texture2D)EditorGUILayout.ObjectField("TexMid", m_texturer.TexMid, typeof(Texture2D), false);
+			m_texturer.TexHigh = (Texture2D)EditorGUILayout.ObjectField("TexHigh", m_texturer.TexHigh, typeof(Texture2D), false);
 			if (GUILayout.Button("Texture")) {
 				m_texturer.TextureTerrain();
 			}
