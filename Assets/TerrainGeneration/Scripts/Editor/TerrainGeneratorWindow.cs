@@ -31,16 +31,16 @@ public class TerrainGeneratorWindow : EditorWindow
 		//
 		// Texturing
 		//
-		m_texturer = (TerrainTexturer)EditorGUILayout.ObjectField("Texturer", m_texturer, typeof(TerrainTexturer), true);
+		//m_texturer = (TerrainTexturer)EditorGUILayout.ObjectField("Texturer", m_texturer, typeof(TerrainTexturer), true);
 
-		if(m_texturer != null)
-		{
-			m_texturer.TexLow = (Texture2D)EditorGUILayout.ObjectField("TexLow", m_texturer.TexLow, typeof(Texture2D), false);
-			m_texturer.TexMid = (Texture2D)EditorGUILayout.ObjectField("TexMid", m_texturer.TexMid, typeof(Texture2D), false);
-			m_texturer.TexHigh = (Texture2D)EditorGUILayout.ObjectField("TexHigh", m_texturer.TexHigh, typeof(Texture2D), false);
-			if (GUILayout.Button("Texture")) {
-				m_texturer.TextureTerrain();
-			}
-		}
+		//if(m_texturer != null)
+		//{
+		//	m_texturer.TexLow = (Texture2D)EditorGUILayout.ObjectField("TexLow", m_texturer.TexLow, typeof(Texture2D), false);
+		//	m_texturer.TexMid = (Texture2D)EditorGUILayout.ObjectField("TexMid", m_texturer.TexMid, typeof(Texture2D), false);
+		//	m_texturer.TexHigh = (Texture2D)EditorGUILayout.ObjectField("TexHigh", m_texturer.TexHigh, typeof(Texture2D), false);
+		//	if (GUILayout.Button("Texture")) {
+		//		m_texturer.TextureTerrain();
+		//	}
+		//}
 	}
 }
