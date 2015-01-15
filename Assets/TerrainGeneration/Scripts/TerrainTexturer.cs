@@ -1,14 +1,26 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System;
 
 [RequireComponent(typeof(Terrain))]
 public class TerrainTexturer : MonoBehaviour {
 
+	[Serializable]
+	public class TTextureData
+	{
+		public Texture2D Tex;
+		public Texture2D NormalMap;
+		public Vector2 TileOffSet;
+		public Vector2 TileSize;
+		public float HeightBorder;
+	}
+	
+	
 	public Terrain Terrain { get; private set; }
 
-	public Texture2D TexLow;
-	public Texture2D TexMid;
-	public Texture2D TexHigh;
+	public List<TTextureData> HeightTexturData = new List<TTextureData>();
 
 	// Use this for initialization
 	void Start()
@@ -22,43 +34,46 @@ public class TerrainTexturer : MonoBehaviour {
 		if(!Terrain)
 			Terrain = GetComponent<Terrain>();
 
-		var textures = new SplatPrototype[3];
-		// low texture
-		textures[0] = new SplatPrototype();
-		textures[0].texture = TexLow;
-		// mid texture
-		textures[1] = new SplatPrototype();
-		textures[1].texture = TexMid;
-		// high texture
-		textures[2] = new SplatPrototype();
-		textures[2].texture = TexHigh;
-
 		var td = Terrain.terrainData;
 		td.alphamapResolution = td.heightmapResolution;
-		var map = new float[td.alphamapWidth, td.alphamapHeight, 3];
+		var map = new float[td.alphamapWidth, td.alphamapHeight, HeightTexturData.Count];
 
-		float max = float.MinValue;
-		float min = float.MaxValue;
 		for (int x = 0; x < td.alphamapWidth; x++) {
 			for (int y = 0; y < td.alphamapHeight; y++) {
-				float xR = x / (float)td.alphamapWidth;
-				float yR = y / (float)td.alphamapHeight;
+				// For unknown reasons the alpha map has flipped coordinates
+				// That's why we access the height of (y,x) but write it into (x,y)
+				var height = td.GetHeight(y, x) / td.heightmapScale.y;
 
-				var angle = td.GetSteepness(xR, yR);
-				var frac = angle / 90.0f;
-
-				max = Mathf.Max(frac, max);
-				min = Mathf.Min(frac, min);
-
-				map[x, y, 0] = (frac < 0.3f) ? 1.0f : 0.0f;
-				map[x, y, 1] = (frac >= 0.3f && frac < 0.7f) ? 1.0f : 0.0f;
-				map[x, y, 2] = (frac >= 0.7f) ? 1.0f : 0.0f;
+				map[x, y, 0] = (height < HeightTexturData.First().HeightBorder) ? 1.0f : 0.0f;
+				for (int k = 1; k < HeightTexturData.Count - 1; k++) {
+					map[x, y, k] = (height >= HeightTexturData[k - 1].HeightBorder
+						&& height < HeightTexturData[k].HeightBorder) 
+							? 1.0f : 0.0f;
+				}
+				if (HeightTexturData.Count > 1)
+					map[x, y, HeightTexturData.Count - 1] = (height >= HeightTexturData[HeightTexturData.Count - 2].HeightBorder) ? 1.0f : 0.0f;
 
 			}
 		}
-		Debug.Log("Max angle fraction: " + max + " min angle fraction: " + min);
 
-		td.splatPrototypes = textures;
+		td.splatPrototypes = ToSplatArray(HeightTexturData);
 		td.SetAlphamaps(0, 0, map);
+	}
+
+	private SplatPrototype[] ToSplatArray(List<TTextureData> texData)
+	{
+		var result = new SplatPrototype[texData.Count];
+		for (int i = 0; i < texData.Count; i++) {
+			result[i] = new SplatPrototype();
+			result[i].texture = texData[i].Tex;
+			result[i].normalMap = texData[i].NormalMap;
+			result[i].tileOffset = texData[i].TileOffSet;
+			if (texData[i].TileSize == Vector2.zero) {
+				texData[i].TileSize = new Vector2(texData[i].Tex.width, texData[i].Tex.height);
+			}
+			result[i].tileSize = texData[i].TileSize;
+			
+		}
+		return result;
 	}
 }
