@@ -27,12 +27,19 @@ public class TerrainGenerator : MonoBehaviour {
 		// Default roughness function 2^(-H) for H := m_roughness
 		// does not depend on average, max or size i.e. the callback is constant
 		float roughnessResult = Mathf.Pow(2, -Roughness);
+		int resolution = (int)Mathf.Pow(2, Detail) + 1;
 		DSANoise noise = new DSANoise(Detail);
+		noise.SetControlValues(
+			Random.Range(0, resolution),
+			Random.Range(0, resolution),
+			Random.Range(0, resolution),
+			Random.Range(0, resolution)
+			);
 		noise.SetRoughnessFunction((average, max, size) => {
 			return roughnessResult;
 		});
 		noise.Generate();
-		Terrain.terrainData.heightmapResolution = (int) Mathf.Pow(2, Detail) + 1;
+		Terrain.terrainData.heightmapResolution = resolution;
 		Terrain.terrainData.size = new Vector3(2000, 600, 2000);
 		Terrain.terrainData.SetHeights(0, 0, noise.GetNoiseMap());
 	}
