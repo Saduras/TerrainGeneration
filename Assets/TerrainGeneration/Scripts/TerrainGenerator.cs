@@ -30,10 +30,10 @@ public class TerrainGenerator : MonoBehaviour {
 		int resolution = (int)Mathf.Pow(2, Detail) + 1;
 		DSANoise noise = new DSANoise(Detail);
 		noise.SetControlValues(
-			Random.Range(0, resolution),
-			Random.Range(0, resolution),
-			Random.Range(0, resolution),
-			Random.Range(0, resolution)
+			Random.Range(0f, 1f),
+			Random.Range(0f, 1f),
+			Random.Range(0f, 1f),
+			Random.Range(0f, 1f)
 			);
 		noise.SetRoughnessFunction((average, max, size) => {
 			return roughnessResult;
@@ -41,6 +41,6 @@ public class TerrainGenerator : MonoBehaviour {
 		noise.Generate();
 		Terrain.terrainData.heightmapResolution = resolution;
 		Terrain.terrainData.size = new Vector3(2000, 600, 2000);
-		Terrain.terrainData.SetHeights(0, 0, noise.GetNoiseMap());
+		Terrain.terrainData.SetHeights(0, 0, noise.Map);
 	}
 }

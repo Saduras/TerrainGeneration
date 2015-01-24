@@ -7,29 +7,31 @@ public class DSANoise {
 
 	public delegate float CalculateRoughness(float average, float max, float size);
 
+	public float[,] Map { get { return m_map; } }
+
 	CalculateRoughness m_roughness;
-	int[,] _map;
-	int _max;
+	float[,] m_map;
+	int m_max;
 
 	public DSANoise(int detail) {
-		_max = (int) Mathf.Pow(2, detail);
+		m_max = (int) Mathf.Pow(2, detail);
 
-		_map = new int[_max + 1, _max + 1];
+		m_map = new float[m_max + 1, m_max + 1];
 
 		// set default control values
-		int half = (_max + 1) / 2;
-		SetControlValues(half, half, half, half);
+		SetControlValues(0.5f, 0.5f, 0.5f, 0.5f);
 
 		m_roughness = (average, max, size) => {
 			return Mathf.Pow(2, -1.0f);
 		};
 	}
 
-	public void SetControlValues(int a, int b, int c, int d) {
-		_map[0,0] = a;
-		_map[_max,0] = b;
-		_map[0,_max] = c;
-		_map[_max,_max] = d;
+	public void SetControlValues(float a, float b, float c, float d)
+	{
+		m_map[0,0] = a;
+		m_map[m_max,0] = b;
+		m_map[0,m_max] = c;
+		m_map[m_max,m_max] = d;
 	}
 
 	public void SetRoughnessFunction(CalculateRoughness roughness) 
@@ -38,52 +40,39 @@ public class DSANoise {
 	}
 
 	public void Generate() {
-		Divide(_max);
-	}
-
-	public float[,] GetNoiseMap()
-	{
-		float[,] result = new float[_max + 1, _max + 1];
-
-		for (int i = 0; i < _map.GetLength(0); i++) {
-			for (int j = 0; j < _map.GetLength(1); j++) {
-				result[i,j] = _map[i,j] / (float)_max;
-			}
-		}
-
-		return result;
+		Divide(m_max);
 	}
 	
 	void Divide(int size) {
 		int x, y;
 		int half = size / 2;
 		float average;
-		int scale = size;
+		float scale = size / (float)m_max;
 
 		// recursion cancel condition
 		if (half < 1) return;
 
 		// iterate over square centers for current size
-		for (x = half; x < _max; x += size)
+		for (x = half; x < m_max; x += size)
 		{
-			for (y = half; y < _max; y += size)
+			for (y = half; y < m_max; y += size)
 			{
 				average = SquareAverage(x, y, half);
 				float roundness = GetRoundness(average, size);
-				int random = Mathf.FloorToInt(Random.Range(-scale * roundness, scale * roundness));
-				_map[x,y] = Mathf.FloorToInt(Mathf.Clamp(average + random, 0, _max));
+				float random = Random.Range(-scale * roundness, scale * roundness);
+				m_map[x,y] = Mathf.Clamp(average + random, 0, 1);
 			}
 		}
 
 		// iterate over diamond center for current size
-		for (x = 0; x <= _max; x += half)
+		for (x = 0; x <= m_max; x += half)
 		{
-			for (y = (x + half) % size; y <= _max; y += size)
+			for (y = (x + half) % size; y <= m_max; y += size)
 			{
 				average = DiamondAverage(x, y, half);
 				float roundness = GetRoundness(average, size);
-				int random = Mathf.FloorToInt(Random.Range(-scale * roundness, scale * roundness));
-				_map[x,y] = Mathf.FloorToInt(Mathf.Clamp(average + random, 0, _max));
+				float random = Random.Range(-scale * roundness, scale * roundness);
+				m_map[x, y] = Mathf.Clamp(average + random, 0, 1);
 			}
 		}
 
@@ -109,9 +98,9 @@ public class DSANoise {
 		List<float> values = new List<float>();
 		for (int i = 0; i != 4; i++)
 		{
-			if (IsInRange(vertices[i][0], 0, _max)
-				&& IsInRange(vertices[i][1], 0, _max)) {
-				values.Add(_map[vertices[i][0], vertices[i][1]]);
+			if (IsInRange(vertices[i][0], 0, m_max)
+				&& IsInRange(vertices[i][1], 0, m_max)) {
+				values.Add(m_map[vertices[i][0], vertices[i][1]]);
 			}
 		}
 		
@@ -135,9 +124,9 @@ public class DSANoise {
 		List<float> values = new List<float>();
 		for (int i = 0; i != 4; i++)
 		{
-			if (IsInRange(vertices[i][0], 0, _max)
-				&& IsInRange(vertices[i][1], 0, _max)) {
-				values.Add(_map[vertices[i][0],vertices[i][1]]);
+			if (IsInRange(vertices[i][0], 0, m_max)
+				&& IsInRange(vertices[i][1], 0, m_max)) {
+				values.Add(m_map[vertices[i][0],vertices[i][1]]);
 			}
 		}
 
@@ -146,7 +135,7 @@ public class DSANoise {
 
 	float GetRoundness(float average, float size)
 	{
-		return Mathf.Clamp(m_roughness(average, _max, size), 0, 1);
+		return Mathf.Clamp(m_roughness(average, m_max, size), 0, 1);
 	}
 
 	/**
