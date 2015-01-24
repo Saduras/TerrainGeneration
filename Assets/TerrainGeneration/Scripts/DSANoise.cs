@@ -57,53 +57,48 @@ public class DSANoise {
 	}
 
 	public void Generate() {
-		Divide(m_max);
-	}
-	
-	void Divide(int size) {
-		int x, y;
-		int half = size / 2;
-		float average;
-		float scale = size / (float)m_max;
+		int size = m_max;
+		int x, y, half;
+		float average, scale;
 
-		// recursion cancel condition
-		if (half < 1) return;
+		while (size > 1) {
+			half = size / 2;
+			scale = size / (float)m_max;
 
-		// iterate over square centers for current size
-		for (x = half; x < m_max; x += size)
-		{
-			for (y = half; y < m_max; y += size)
-			{
-				// Skip field if it is already set
-				if (m_map[x, y] >= 0f)
-					continue;
+			// recursion cancel condition
+			if (half < 1) return;
 
-				average = SquareAverage(x, y, half);
-				float roundness = GetRoundness(average, size);
-				float random = Random.Range(-scale * roundness, scale * roundness);
-				m_map[x,y] = Mathf.Clamp(average + random, 0, 1);
+			// iterate over square centers for current size
+			for (x = half; x < m_max; x += size) {
+				for (y = half; y < m_max; y += size) {
+					// Skip field if it is already set
+					if (m_map[x, y] >= 0f)
+						continue;
+
+					average = SquareAverage(x, y, half);
+					float roundness = GetRoundness(average, size);
+					float random = Random.Range(-scale * roundness, scale * roundness);
+					m_map[x, y] = Mathf.Clamp(average + random, 0, 1);
+				}
 			}
-		}
 
-		// iterate over diamond center for current size
-		for (x = 0; x <= m_max; x += half)
-		{
-			for (y = (x + half) % size; y <= m_max; y += size)
-			{
-				// Skip field if it is already set
-				if (m_map[x, y] >= 0f)
-					continue;
+			// iterate over diamond center for current size
+			for (x = 0; x <= m_max; x += half) {
+				for (y = (x + half) % size; y <= m_max; y += size) {
+					// Skip field if it is already set
+					if (m_map[x, y] >= 0f)
+						continue;
 
-				average = DiamondAverage(x, y, half);
-				float roundness = GetRoundness(average, size);
-				float random = Random.Range(-scale * roundness, scale * roundness);
-				m_map[x, y] = Mathf.Clamp(average + random, 0, 1);
+					average = DiamondAverage(x, y, half);
+					float roundness = GetRoundness(average, size);
+					float random = Random.Range(-scale * roundness, scale * roundness);
+					m_map[x, y] = Mathf.Clamp(average + random, 0, 1);
+				}
 			}
+
+			size = half;
 		}
-
-		Divide(half);
 	}
-
 	
 
 	/**
