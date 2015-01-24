@@ -16,10 +16,7 @@ public class DSANoise {
 	public DSANoise(int detail) {
 		m_max = (int) Mathf.Pow(2, detail);
 
-		m_map = new float[m_max + 1, m_max + 1];
-
-		// set default control values
-		SetControlValues(0.5f, 0.5f, 0.5f, 0.5f);
+		Reset();
 
 		m_roughness = (average, max, size) => {
 			return Mathf.Pow(2, -1.0f);
@@ -34,9 +31,29 @@ public class DSANoise {
 		m_map[m_max,m_max] = d;
 	}
 
+	public void SetControlValue(int x, int y, float value)
+	{
+		m_map[x, y] = value;
+	}
+
 	public void SetRoughnessFunction(CalculateRoughness roughness) 
 	{
 		m_roughness = roughness;
+	}
+
+	public void Reset()
+	{
+		// Initialize the height map with -1
+		// -1 indicates that the field was not set
+		m_map = new float[m_max + 1, m_max + 1];
+		for (int x = 0; x < m_map.GetLength(0); x++) {
+			for (int y = 0; y < m_map.GetLength(1); y++) {
+				m_map[x, y] = -1f;
+			}
+		}
+
+		// set default control values
+		SetControlValues(0.5f, 0.5f, 0.5f, 0.5f);
 	}
 
 	public void Generate() {
@@ -57,6 +74,10 @@ public class DSANoise {
 		{
 			for (y = half; y < m_max; y += size)
 			{
+				// Skip field if it is already set
+				if (m_map[x, y] >= 0f)
+					continue;
+
 				average = SquareAverage(x, y, half);
 				float roundness = GetRoundness(average, size);
 				float random = Random.Range(-scale * roundness, scale * roundness);
@@ -69,6 +90,10 @@ public class DSANoise {
 		{
 			for (y = (x + half) % size; y <= m_max; y += size)
 			{
+				// Skip field if it is already set
+				if (m_map[x, y] >= 0f)
+					continue;
+
 				average = DiamondAverage(x, y, half);
 				float roundness = GetRoundness(average, size);
 				float random = Random.Range(-scale * roundness, scale * roundness);
