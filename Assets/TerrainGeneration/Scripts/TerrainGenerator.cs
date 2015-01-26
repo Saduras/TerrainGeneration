@@ -14,6 +14,7 @@ public class TerrainGenerator : MonoBehaviour {
 	public Terrain NeighborRight;
 	public Terrain NeighborBottom;
 
+	DSANoise m_noise;
 
 	// Use this for initialization
 	void Start () 
@@ -36,7 +37,11 @@ public class TerrainGenerator : MonoBehaviour {
 		// does not depend on average, max or size i.e. the callback is constant
 		float roughnessResult = Mathf.Pow(2, -Roughness);
 		int resolution = (int)Mathf.Pow(2, Detail) + 1;
-		DSANoise m_noise = new DSANoise(Detail);
+		Terrain.terrainData.heightmapResolution = resolution;
+		Terrain.terrainData.size = new Vector3(2000, 600, 2000);
+
+		m_noise = new DSANoise(Detail);
+		m_noise.GenerationCompleted += OnGenerationCompleted;
 		m_noise.SetControlValues(
 			Random.Range(0f, 1f),
 			Random.Range(0f, 1f),
@@ -49,34 +54,21 @@ public class TerrainGenerator : MonoBehaviour {
 
 		GetControlsFromNeighbours(ref m_noise, resolution);
 
+		Debug.Log("Start height map generation!");
 		if (UsingCoroutine) {
-			StartCoroutine(NoiseGenerationRoutine(Terrain, m_noise, resolution));
+			StopAllCoroutines();
+			StartCoroutine(m_noise.GenerateRoutine());
 		} else {
 			m_noise.Generate();
-			Terrain.terrainData.heightmapResolution = resolution;
-			Terrain.terrainData.size = new Vector3(2000, 600, 2000);
-			Terrain.terrainData.SetHeights(0, 0, m_noise.Map);
+			
 		}
 	}
 
-	IEnumerator NoiseGenerationRoutine(Terrain terrain, DSANoise noise, int resolution)
+	void OnGenerationCompleted()
 	{
-		int size = resolution;
-
-		while (size > 1) {
-			noise.Step(size);
-			size = size / 2;
-
-			if (Time.deltaTime > 0.02f) {
-				yield return new WaitForEndOfFrame();
-			}
-		}
-
-		terrain.terrainData.heightmapResolution = resolution;
-		terrain.terrainData.size = new Vector3(2000, 600, 2000);
-		terrain.terrainData.SetHeights(0, 0, noise.Map);
+		Debug.Log("Generation completed!");
+		Terrain.terrainData.SetHeights(0, 0, m_noise.Map);
 	}
-
 
 	void GetControlsFromNeighbours(ref DSANoise noise, int resolution)
 	{

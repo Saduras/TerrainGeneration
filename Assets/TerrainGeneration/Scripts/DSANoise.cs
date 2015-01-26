@@ -2,18 +2,33 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 
-public class DSANoise {
+public class DSANoise 
+{
+	public event Action GenerationCompleted = () => { };
+
 
 	public delegate float CalculateRoughness(float average, float max, float size);
 
 	public float[,] Map { get { return m_map; } }
 
 	CalculateRoughness m_roughness;
+	IRandomGenerator m_randomGenerator;
 	float[,] m_map;
 	int m_max;
+	bool m_usingCoroutine = false;
 
-	public DSANoise(int detail) {
+	public DSANoise(IRandomGenerator generator, int detail)
+		: this(detail)
+	{
+		m_randomGenerator = generator;
+	}
+
+	public DSANoise(int detail) 
+	{
+		m_randomGenerator = new UnityRandomGenerator();
+
 		m_max = (int) Mathf.Pow(2, detail);
 
 		Reset();
@@ -56,17 +71,15 @@ public class DSANoise {
 		SetControlValues(0.5f, 0.5f, 0.5f, 0.5f);
 	}
 
-	public void Generate() {
+	public IEnumerator GenerateRoutine()
+	{
 		int size = m_max;
-		int x, y, half;
-		float average, scale;
-
 		while (size > 1) {
-			half = size / 2;
-			scale = size / (float)m_max;
+			int x, y;
+			float average;
 
-			// recursion cancel condition
-			if (half < 1) return;
+			int half = size / 2;
+			float scale = size / (float)m_max;
 
 			// iterate over square centers for current size
 			for (x = half; x < m_max; x += size) {
@@ -76,9 +89,11 @@ public class DSANoise {
 						continue;
 
 					average = SquareAverage(x, y, half);
-					float roundness = GetRoundness(average, size);
-					float random = Random.Range(-scale * roundness, scale * roundness);
-					m_map[x, y] = Mathf.Clamp(average + random, 0, 1);
+					m_map[x, y] = RandomShift(average, size, scale);
+
+					// Pause if the algorithm takes to long
+					if (Time.deltaTime > 0.03f)
+						yield return new WaitForEndOfFrame();
 				}
 			}
 
@@ -90,16 +105,73 @@ public class DSANoise {
 						continue;
 
 					average = DiamondAverage(x, y, half);
-					float roundness = GetRoundness(average, size);
-					float random = Random.Range(-scale * roundness, scale * roundness);
-					m_map[x, y] = Mathf.Clamp(average + random, 0, 1);
+					m_map[x, y] = RandomShift(average, size, scale);
+
+					// Pause if the algorithm takes to long
+					if (Time.deltaTime > 0.03f)
+						yield return new WaitForEndOfFrame();
 				}
 			}
-
-			size = half;
+			size = size / 2;
 		}
+
+		GenerationCompleted();
+	}
+
+	public void Generate() {
+		int size = m_max;
+		while (size > 1) {
+			Step(size);
+			size = size / 2;
+		}
+
+		GenerationCompleted();
 	}
 	
+	void Step(int size)
+	{
+		int x, y;
+		float average;
+
+		int half = size / 2;
+		float scale = size / (float)m_max;
+
+		// iterate over square centers for current size
+		for (x = half; x < m_max; x += size) {
+			for (y = half; y < m_max; y += size) {
+				// Skip field if it is already set
+				if (m_map[x, y] >= 0f)
+					continue;
+
+				average = SquareAverage(x, y, half);
+				m_map[x, y] = RandomShift(average, size, scale);
+			}
+		}
+
+		// iterate over diamond center for current size
+		for (x = 0; x <= m_max; x += half) {
+			for (y = (x + half) % size; y <= m_max; y += size) {
+				// Skip field if it is already set
+				if (m_map[x, y] >= 0f)
+					continue;
+
+				average = DiamondAverage(x, y, half);
+				m_map[x, y] = RandomShift(average, size, scale);
+			}
+		}
+	}
+
+	#region calculation substeps
+	/**
+	 * Shift base value by a random value that depends on current size and a scalar value.
+	 */
+	float RandomShift(float baseValue, int size, float scale)
+	{
+		float roundness = GetRoundness(baseValue, size);
+		float random = m_randomGenerator.Range(-scale * roundness, scale * roundness);
+		return Mathf.Clamp(baseValue + random, 0, 1);
+	}
+
 
 	/**
 	 * Calculate the average of vertices of a diamond 
@@ -152,6 +224,7 @@ public class DSANoise {
 
 		return values.Average();
 	}
+	#endregion
 
 	float GetRoundness(float average, float size)
 	{
