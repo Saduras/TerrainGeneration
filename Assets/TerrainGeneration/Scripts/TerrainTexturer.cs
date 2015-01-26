@@ -25,6 +25,11 @@ public class TerrainTexturer : MonoBehaviour {
 	// Use this for initialization
 	void Start()
 	{
+		Init();
+	}
+
+	public void Init()
+	{
 		Terrain = GetComponent<Terrain>();
 	}
 
