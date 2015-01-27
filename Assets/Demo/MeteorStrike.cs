@@ -3,6 +3,7 @@ using System.Collections;
 
 public class MeteorStrike : MonoBehaviour {
 
+	public Terrain Terrain;
 	public Vector3 CenterOffset;
 	public float Radius;
 
@@ -33,32 +34,31 @@ public class MeteorStrike : MonoBehaviour {
 
 	void Explode(Vector3 center, float radius)
 	{
-		var terrain = Terrain.activeTerrain;
 
-		Vector3 worldSize = terrain.terrainData.size;
-		Vector3 worldCenter = terrain.transform.position;
-		int size = terrain.terrainData.heightmapResolution;
+		Vector3 worldSize = Terrain.terrainData.size;
+		Vector3 worldCenter = Terrain.transform.position;
+		int size = Terrain.terrainData.heightmapResolution;
 
-		float[,] heightMap = terrain.terrainData.GetHeights(0, 0, size, size);
+		float[,] heightMap = Terrain.terrainData.GetHeights(0, 0, size, size);
 
 		Vector3 pos;
 		float height;
 		for (int x = 0; x < size; x++) {
 			for (int y = 0; y < size; y++) {
-				height = terrain.terrainData.GetHeight(x,y);
+				height = Terrain.terrainData.GetHeight(x,y);
 				// Transform heigtmap pixel to world coordiantes
 				pos = PixelToWorld(height, x, y, size, worldSize, worldCenter);
 
 				// check collision with sphere
 				if ( (center - pos).magnitude < radius ) 
 				{
-					heightMap[y, x] = ProjectHeight(pos, center, radius) / terrain.terrainData.size.y;
+					heightMap[y, x] = ProjectHeight(pos, center, radius) / Terrain.terrainData.size.y;
 				}
 
 			}
 		}
 
-		terrain.terrainData.SetHeights(0, 0, heightMap);
+		Terrain.terrainData.SetHeights(0, 0, heightMap);
 	}
 
 	Vector3 PixelToWorld(float height, int x, int y, int size, Vector3 worldSize, Vector3 worldCenter)
