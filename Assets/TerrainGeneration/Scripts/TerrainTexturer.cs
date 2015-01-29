@@ -19,7 +19,9 @@ public class TerrainTexturer : MonoBehaviour {
 	
 	
 	public Terrain Terrain { get; private set; }
-
+	public bool UseFractalNoise = true;
+	public float NoiseFactor = 0.5f;
+	public float NoiseRoughness = 0.7f;
 	public List<TTextureData> HeightTexturData = new List<TTextureData>();
 
 	// Use this for initialization
@@ -43,11 +45,23 @@ public class TerrainTexturer : MonoBehaviour {
 		td.alphamapResolution = td.heightmapResolution;
 		var map = new float[td.alphamapWidth, td.alphamapHeight, HeightTexturData.Count];
 
+		var noise = new float[td.alphamapWidth, td.alphamapHeight];
+		if (UseFractalNoise) {
+			var noiseGen = new DSANoise((int) Mathf.Log(td.heightmapResolution - 1, 2));
+			noiseGen.SetRoughnessFunction((average, max, size) => { return NoiseRoughness; });
+			noiseGen.Generate();
+			noise = noiseGen.Map;
+		}
+
 		for (int x = 0; x < td.alphamapWidth; x++) {
 			for (int y = 0; y < td.alphamapHeight; y++) {
 				// For unknown reasons the alpha map has flipped coordinates
 				// That's why we access the height of (y,x) but write it into (x,y)
 				var height = td.GetHeight(y, x) / td.heightmapScale.y;
+
+				if (UseFractalNoise) {
+					height += (0.5f - noise[x, y]) * NoiseFactor;
+				}
 
 				map[x, y, 0] = (height < HeightTexturData.First().HeightBorder) ? 1.0f : 0.0f;
 				for (int k = 1; k < HeightTexturData.Count - 1; k++) {
