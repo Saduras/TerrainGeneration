@@ -6,6 +6,13 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Terrain))]
 public class TerrainGenerator : MonoBehaviour {
 
+	struct ControlPoint
+	{
+		public int X;
+		public int Y;
+		public float Height; 
+	}
+
 	public Terrain Terrain { get; private set; }
 	public int Detail = 8;
 	public float Roughness = 0.7f;
@@ -16,7 +23,7 @@ public class TerrainGenerator : MonoBehaviour {
 	public Terrain NeighborRight;
 	public Terrain NeighborBottom;
 
-	TerrainControlPoint[,] ControlPoints;
+	List<ControlPoint> NoiseControlPoints = new List<ControlPoint>();
 
 	DSANoise m_noise;
 
@@ -28,6 +35,7 @@ public class TerrainGenerator : MonoBehaviour {
 
 	public void Init()
 	{
+		NoiseControlPoints = new List<ControlPoint>();
 		Terrain = GetComponent<Terrain>();
 		Terrain.SetNeighbors(NeighborLeft, NeighborTop, NeighborRight, NeighborBottom);
 	}
@@ -46,17 +54,15 @@ public class TerrainGenerator : MonoBehaviour {
 
 		m_noise = new DSANoise(Detail);
 		m_noise.GenerationCompleted += OnGenerationCompleted;
-		m_noise.SetControlValues(
-			Random.Range(0f, 1f),
-			Random.Range(0f, 1f),
-			Random.Range(0f, 1f),
-			Random.Range(0f, 1f)
-			);
 		m_noise.SetRoughnessFunction((average, max, size) => {
 			return roughnessResult;
 		});
 
-		GetControlsFromNeighbours(ref m_noise, resolution);
+		foreach (var cp in NoiseControlPoints) {
+			m_noise.SetControlValue(cp.X, cp.Y, cp.Height);
+		}
+
+		//GetControlsFromNeighbours(ref m_noise, resolution);
 
 		Debug.Log("Start height map generation!");
 		if (UsingCoroutine) {
@@ -68,7 +74,48 @@ public class TerrainGenerator : MonoBehaviour {
 		}
 	}
 
+	void OnGenerationCompleted()
+	{
+		Debug.Log("Generation completed!");
+		Terrain.terrainData.SetHeights(0, 0, m_noise.Map);
+	}
+
+	void GetControlsFromNeighbours(ref DSANoise noise, int resolution)
+	{
+		if (NeighborLeft != null) {
+			for (int j = 0; j < resolution; j++) {
+				float height = NeighborLeft.terrainData.GetHeight(resolution - 1, j) / NeighborLeft.terrainData.heightmapScale.y;
+				noise.SetControlValue(j, 0, height);
+			}
+		}
+
+		if (NeighborTop != null) {
+			for (int j = 0; j < resolution; j++) {
+				float height = NeighborTop.terrainData.GetHeight(j, 0) / NeighborTop.terrainData.heightmapScale.y;
+				noise.SetControlValue(resolution - 1, j, height);
+			}
+		}
+
+		if (NeighborRight != null) {
+			for (int j = 0; j < resolution; j++) {
+				float height = NeighborRight.terrainData.GetHeight(0, j) / NeighborRight.terrainData.heightmapScale.y;
+				noise.SetControlValue(j, resolution - 1, height);
+			}
+		}
+
+		if (NeighborBottom != null) {
+			for (int j = 0; j < resolution; j++) {
+				float height = NeighborBottom.terrainData.GetHeight(j, resolution - 1) / NeighborBottom.terrainData.heightmapScale.y;
+				noise.SetControlValue(0, j, height);
+			}
+		}
+
+		Terrain.SetNeighbors(NeighborLeft, NeighborTop, NeighborRight, NeighborBottom);
+	}
+
 #if UNITY_EDITOR
+	TerrainControlPoint[,] ControlPoints;
+
 	public void OnDrawGizmos()
 	{
 		if (ControlPoints == null || ControlPoints.GetLength(0) < 2)
@@ -77,10 +124,10 @@ public class TerrainGenerator : MonoBehaviour {
 		Vector3 tl, tr, bl, br;
 		for (int i = 1; i < ControlPoints.GetLength(0); i++) {
 			for (int j = 1; j < ControlPoints.GetLength(1); j++) {
-				tl = ControlPoints[i-1, j-1].transform.position;
-				tr = ControlPoints[i  , j-1].transform.position;
-				bl = ControlPoints[i-1, j  ].transform.position;
-				br = ControlPoints[i  , j  ].transform.position;
+				tl = ControlPoints[i - 1, j - 1].transform.position;
+				tr = ControlPoints[i, j - 1].transform.position;
+				bl = ControlPoints[i - 1, j].transform.position;
+				br = ControlPoints[i, j].transform.position;
 
 				Debug.DrawLine(tl, tr);
 				Debug.DrawLine(tr, br);
@@ -136,6 +183,26 @@ public class TerrainGenerator : MonoBehaviour {
 
 	public void StopEditControls()
 	{
+		NoiseControlPoints.Clear();
+
+		foreach (var point in ControlPoints) {
+			// Save control points for generation
+			NoiseControlPoints.Add(new ControlPoint
+			{
+				X = (int)point.HeightmapPoint.x,
+				Y = (int)point.HeightmapPoint.y,
+				Height = point.transform.position.y / Terrain.terrainData.size.y
+			});
+
+			// Destroy game objects of the control points
+			if (Application.isEditor) {
+				DestroyImmediate(point.gameObject);
+			}
+			else {
+				Destroy(point.gameObject);
+			}
+		}
+
 		ControlPoints = null;
 	}
 
@@ -152,45 +219,4 @@ public class TerrainGenerator : MonoBehaviour {
 		return worldPos;
 	}
 #endif
-
-	void OnGenerationCompleted()
-	{
-		Debug.Log("Generation completed!");
-		Terrain.terrainData.SetHeights(0, 0, m_noise.Map);
-	}
-
-	void GetControlsFromNeighbours(ref DSANoise noise, int resolution)
-	{
-		if (NeighborLeft != null) {
-			for (int j = 0; j < resolution; j++) {
-				float height = NeighborLeft.terrainData.GetHeight(resolution - 1, j) / NeighborLeft.terrainData.heightmapScale.y;
-				noise.SetControlValue(j, 0, height);
-			}
-		}
-
-		if (NeighborTop != null) {
-			for (int j = 0; j < resolution; j++) {
-				float height = NeighborTop.terrainData.GetHeight(j, 0) / NeighborTop.terrainData.heightmapScale.y;
-				noise.SetControlValue(resolution - 1, j, height);
-			}
-		}
-
-		if (NeighborRight != null) {
-			for (int j = 0; j < resolution; j++) {
-				float height = NeighborRight.terrainData.GetHeight(0, j) / NeighborRight.terrainData.heightmapScale.y;
-				noise.SetControlValue(j, resolution - 1, height);
-			}
-		}
-
-		if (NeighborBottom != null) {
-			for (int j = 0; j < resolution; j++) {
-				float height = NeighborBottom.terrainData.GetHeight(j, resolution - 1) / NeighborBottom.terrainData.heightmapScale.y;
-				noise.SetControlValue(0, j, height);
-			}
-		}
-
-		Terrain.SetNeighbors(NeighborLeft, NeighborTop, NeighborRight, NeighborBottom);
-	}
-
-	
 }
