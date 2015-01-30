@@ -14,5 +14,9 @@ public class TerrainGeneratorEditor : Editor
 			generator.Generate();
 		}
 
+		if (GUILayout.Button("EditControls")) {
+			generator.StartEditControls();
+		}
+
 	}
 }

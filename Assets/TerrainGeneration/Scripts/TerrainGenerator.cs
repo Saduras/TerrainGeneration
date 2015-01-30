@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
+using UnityEditor;
 using System.Collections;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(Terrain))]
 public class TerrainGenerator : MonoBehaviour {
@@ -13,6 +15,8 @@ public class TerrainGenerator : MonoBehaviour {
 	public Terrain NeighborTop;
 	public Terrain NeighborRight;
 	public Terrain NeighborBottom;
+
+	TerrainControlPoint[,] ControlPoints;
 
 	DSANoise m_noise;
 
@@ -63,6 +67,91 @@ public class TerrainGenerator : MonoBehaviour {
 			
 		}
 	}
+
+#if UNITY_EDITOR
+	public void OnDrawGizmos()
+	{
+		if (ControlPoints == null || ControlPoints.GetLength(0) < 2)
+			return;
+
+		Vector3 tl, tr, bl, br;
+		for (int i = 1; i < ControlPoints.GetLength(0); i++) {
+			for (int j = 1; j < ControlPoints.GetLength(1); j++) {
+				tl = ControlPoints[i-1, j-1].transform.position;
+				tr = ControlPoints[i  , j-1].transform.position;
+				bl = ControlPoints[i-1, j  ].transform.position;
+				br = ControlPoints[i  , j  ].transform.position;
+
+				Debug.DrawLine(tl, tr);
+				Debug.DrawLine(tr, br);
+				Debug.DrawLine(br, bl);
+				Debug.DrawLine(bl, tl);
+			}
+		}
+	}
+
+	public void StartEditControls()
+	{
+		int iterations = 1;
+
+		int max = Terrain.terrainData.heightmapResolution - 1;
+		int x, y, i, j;
+
+		int controlMatrixSize = (int)Mathf.Pow(2, iterations) + 1;
+		var controlCoordiantes = new Vector2[controlMatrixSize, controlMatrixSize];
+		int step = max / (controlMatrixSize - 1);
+		i = j = 0;
+		for (x = 0; x <= max; x += step) {
+			j = 0;
+			for (y = 0; y <= max; y += step) {
+				controlCoordiantes[i, j] = new Vector2(x, y);
+				j++;
+			}
+			i++;
+		}
+
+		var td = Terrain.terrainData;
+		var tPos = Terrain.transform.position;
+		ControlPoints = new TerrainControlPoint[controlMatrixSize, controlMatrixSize];
+
+		for (i = 0; i < controlMatrixSize; i++) {
+			for (j = 0; j < controlMatrixSize; j++) {
+
+				var go = new GameObject("CtrlPt");
+				go.transform.SetParent(Terrain.transform);
+				var ctrlPt = go.AddComponent<TerrainControlPoint>();
+
+				Vector3 worldPos = ControlPointToWorld(controlCoordiantes[i, j]);
+				// Get height bounds
+				float minY = tPos.y;
+				float maxY = minY + td.size.y;
+
+				ctrlPt.Init(controlCoordiantes[i, j], worldPos.x, worldPos.z, minY, maxY);
+				go.transform.position = worldPos;
+
+				ControlPoints[i, j] = ctrlPt;
+			}
+		}
+	}
+
+	public void StopEditControls()
+	{
+		ControlPoints = null;
+	}
+
+	Vector3 ControlPointToWorld(Vector2 point)
+	{
+		var td = Terrain.terrainData;
+		int max = td.heightmapResolution - 1;
+
+		Vector3 worldPos = new Vector3();
+		worldPos.x = (point.x / (float)max) * td.size.x;
+		worldPos.y = td.GetHeight((int)point.x, (int)point.y);
+		worldPos.z = (point.y / (float)max) * td.size.z;
+
+		return worldPos;
+	}
+#endif
 
 	void OnGenerationCompleted()
 	{
